@@ -6,6 +6,20 @@ use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\KgbKpController; // Perbaikan typo dari Kbg menjadi Kgb
 
+// Route::get('/manual-link', function () {
+//     $target = storage_path('app/public');
+//     $link = public_path('storage');
+
+//     if (file_exists($link)) {
+//         return 'Link sudah ada.';
+//     }
+
+//     // Mencoba membuat link menggunakan fungsi PHP native
+//     symlink($target, $link);
+
+//     return 'Link storage berhasil dibuat via Web.';
+// });
+
 // --- Login & Logout ---
 Route::get('/', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);

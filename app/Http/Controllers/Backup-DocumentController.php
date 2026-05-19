@@ -108,39 +108,15 @@ class DocumentController extends Controller
         $inputYear = $request->year;
         $inputQuarter = $request->quarter;
         $periodLabel = null;
-    
         if ($inputYear) {
-            // Jika kategori adalah Laporan Kinerja, cukup simpan tahun saja di kolom period
-            if ($request->category == 'Laporan Kinerja') {
-                $periodLabel = $inputYear . '-' . $inputQuarter;
-            } else {
-                // Untuk kategori lain (seperti SKP), tetap gunakan format (T1) jika ada quarter
-                $periodLabel = $inputQuarter ? $inputYear . ' (T' . $inputQuarter . ')' : $inputYear;
-            }
+            $periodLabel = $inputQuarter ? $inputYear . ' (T' . $inputQuarter . ')' : $inputYear;
         }
-
-        // TIMPA DOKUMEN LAMA
-        $existingDoc = Document::where('user_id', $userId)
-            ->where('category', $request->category)
-            ->where('title', $request->title)
-            ->where('period', $periodLabel)
-            ->first();
-
-        if ($existingDoc) {
-            // Hapus file fisik dari storage
-            if (Storage::disk('public')->exists($existingDoc->file_path)) {
-                Storage::disk('public')->delete($existingDoc->file_path);
-            }
-            // Hapus record lama di database
-            $existingDoc->delete();
-        }
-        // END TIMPA DOKUMEN LAMA
 
         // LOGIKA PENAMAAN FILE
         $file = $request->file('file');
         $cleanUserName = Str::slug($userName, '_');
         $cleanTitle = Str::slug($request->title, '_');
-        $qSuffix = $inputQuarter ? ($request->category == 'Laporan Kinerja' ? "_" . $inputQuarter : "_t" . $inputQuarter) : "";
+        $qSuffix = $inputQuarter ? "_t" . $inputQuarter : "";
         $ySuffix = $inputYear ? "_" . $inputYear : "";
         
         $fileName = "{$cleanUserName}_{$cleanTitle}{$ySuffix}{$qSuffix}.pdf";
@@ -172,8 +148,7 @@ class DocumentController extends Controller
         $documents = Document::where('user_id', $targetUserId)
             ->where('category', $request->category)
             ->where('title', $request->title)
-            ->orderByRaw("LEFT(period, 4) DESC")
-            ->orderByRaw("CAST(quarter AS UNSIGNED) DESC")
+            ->orderBy('period', 'desc')
             ->get();
 
         return response()->json([
@@ -252,22 +227,20 @@ class DocumentController extends Controller
 
     public function destroy($id)
     {
-        try {
-            $document = Document::findOrFail($id);
-            $user = Auth::user();
+        $document = Document::findOrFail($id);
+        $user = Auth::user();
     
-            if ($user->role != 'admin' && $document->user_id != $user->id) {
-                return back()->with('error', 'Anda tidak memiliki akses.');
-            }
-    
-            if (Storage::disk('public')->exists($document->file_path)) {
-                Storage::disk('public')->delete($document->file_path);
-            }
-    
-            $document->delete();
-            return back()->with('success', 'Dokumen berhasil dihapus.');
-        } catch (\Exception $e) {
-            return back()->with('error', 'Gagal menghapus: ' . $e->getMessage());
+        // Pastikan ID user dibandingkan dengan benar (gunakan (int) untuk memastikan tipe data sama)
+        if ($user->role !== 'admin' && (int)$document->user_id !== (int)$user->id) {
+            return back()->with('error', 'Anda tidak memiliki akses.');
         }
+    
+        // Gunakan disk public dan pastikan path-nya benar
+        if (Storage::disk('public')->exists($document->file_path)) {
+            Storage::disk('public')->delete($document->file_path);
+        }
+    
+        $document->delete();
+        return back()->with('success', 'Dokumen berhasil dihapus.');
     }
 }

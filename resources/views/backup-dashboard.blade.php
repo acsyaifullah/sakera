@@ -85,7 +85,6 @@
                     'Dokumen Surat Keputusan (SK)' => 'file-earmark-text-fill',
                     'Dokumen Izin / Pemberhentian' => 'file-earmark-x-fill',
                     'Dokumen Evaluasi Kinerja' => 'bar-chart-line-fill',
-                    'Laporan Kinerja' => 'file-earmark-ruled-fill',
                     'Dokumen SPT Tahunan' => 'calculator-fill'
                 ];
             @endphp
@@ -464,13 +463,12 @@
                             <tbody>
                                 @php
                                     $documentMap = [
-                                        'Dokumen Pribadi dan Keluarga' => ['Kartu Pegawai', 'Kartu istri / Kartu Suami', 'NPWP', 'Taspen (PNS)', 'Surat Nikah', 'Surat Cerai / Kematian', 'E-KTP Pegawai', 'E-KTP Suami / Istri', 'Kartu Keluarga', 'BPJS Pegawai', 'BPJS Suami / Istri', 'BPJS Anak', 'BPJS Anak Ke-2', 'BPJS Anak Ke-3', 'Akta Kelahiran Pegawai', 'Akta Kelahiran Suami / Istri', 'Akta Kelahiran Anak', 'Akta Kelahiran Anak Ke-2', 'Akta Kelahiran Anak Ke-3'],
+                                        'Dokumen Pribadi dan Keluarga' => ['Kartu Pegawai', 'Kartu istri / Kartu Suami', 'NPWP', 'Taspen (PNS)', 'Surat Nikah', 'Surat Cerai / Kematian', 'E-KTP Pegawai', 'E-KTP Suami / Istri', 'Kartu Keluarga', 'BPJS Pegawai', 'BPJS Suami / Istri', 'BPJS Anak', 'Akta Kelahiran Pegawai', 'Akta Kelahiran Suami / Istri', 'Akta Kelahiran Anak', 'Akta Kelahiran Anak Ke-2', 'Akta Kelahiran Anak Ke-3'],
                                         'Dokumen Sertifikat' => ['Prajabatan', 'STT Ujian Kenaikan Tingkat', 'SK Penyesuaian Ijazah (BKN)', 'Sertifikat Diklat Struktural', 'Sertifikat Diklat Fungsional', 'Sertifikat Pelatihan / Seminar / Sosialisasi', 'Sertifikat Piagam Penghargaan'],
                                         'Dokumen Pendidikan' => ['Ijazah SD', 'Ijazah SMP', 'Ijazah SMA', 'Ijazah Diploma', 'Ijazah S1', 'Ijazah S2', 'Ijazah S3'],
                                         'Dokumen Surat Keputusan (SK)' => ['Kenaikan Pangkat', 'Kenaikan Gaji Berkala', 'Mutasi', 'CPNS', 'PNS', 'Penyesuaian Jabatan Fungsional', 'Penyesuaian Ijazah (KPU RI)', 'Pengangkatan Jabatan', 'Penugasan Jabatan'],
                                         'Dokumen Izin / Pemberhentian' => ['Surat izin belajar', 'Keputusan sanksi hukuman disiplin'],
                                         'Dokumen Evaluasi Kinerja' => ['SKP Triwulan', 'SKP Tahunan'],
-                                        'Laporan Kinerja' => ['Laporan Kinerja'],
                                         'Dokumen SPT Tahunan' => ['Laporan SPT Tahunan']
                                     ];
                                     $items = $documentMap[request('category')] ?? [];
@@ -500,7 +498,7 @@
                                             <button class="btn btn-sm btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalUpload{{$index}}"><i class="bi bi-cloud-arrow-up"></i></button>
                                             
                                             @if($doc)
-                                                @php $isMultiple = in_array($label, ['SKP Triwulan', 'SKP Tahunan', 'Laporan SPT Tahunan', 'Laporan Kinerja']); @endphp
+                                                @php $isMultiple = in_array($label, ['SKP Triwulan', 'SKP Tahunan', 'Laporan SPT Tahunan']); @endphp
                                                 @if($isMultiple)
                                                     <button class="btn btn-sm btn-info text-white shadow-sm" onclick="openModalList('{{ request('category') }}', '{{ $label }}', '{{ request('user_id') }}')">
                                                         <i class="bi bi-stack"></i>
@@ -600,26 +598,6 @@
 
                             <div class="mb-3 text-center"><i class="bi bi-file-earmark-pdf text-danger display-3"></i></div>
 
-                            @if(request('category') == 'Laporan Kinerja')
-                            <div class="mb-3">
-                                <label class="small fw-bold mb-2">Pilih Bulan</label>
-                                <select name="quarter" class="form-select" required>
-                                    <option value="1">Januari</option>
-                                    <option value="2">Februari</option>
-                                    <option value="3">Maret</option>
-                                    <option value="4">April</option>
-                                    <option value="5">Mei</option>
-                                    <option value="6">Juni</option>
-                                    <option value="7">Juli</option>
-                                    <option value="8">Agustus</option>
-                                    <option value="9">September</option>
-                                    <option value="10">Oktober</option>
-                                    <option value="11">November</option>
-                                    <option value="12">Desember</option>
-                                </select>
-                            </div>
-                            @endif
-
                             @if($label == 'SKP Triwulan')
                             <div class="mb-3">
                                 <label class="small fw-bold mb-2">Pilih Triwulan</label>
@@ -629,7 +607,7 @@
                             </div>
                             @endif
 
-                            @if(request('category') == 'Dokumen SPT Tahunan' || request('category') == 'Dokumen Evaluasi Kinerja' || request('category') == 'Laporan Kinerja')
+                            @if(request('category') == 'Dokumen SPT Tahunan' || request('category') == 'Dokumen Evaluasi Kinerja')
                             <div class="mb-3">
                                 <label class="small fw-bold mb-2">Tahun Periode</label>
                                 <input type="number" name="year" class="form-control" required value="{{ date('Y') }}">
