@@ -85,7 +85,7 @@
                     'Dokumen Surat Keputusan (SK)' => 'file-earmark-text-fill',
                     'Dokumen Izin / Pemberhentian' => 'file-earmark-x-fill',
                     'Dokumen Evaluasi Kinerja' => 'bar-chart-line-fill',
-                    'Laporan Kinerja' => 'file-earmark-ruled-fill',
+                    'Dokumen Laporan Kinerja' => 'file-earmark-ruled-fill',
                     'Dokumen SPT Tahunan' => 'calculator-fill'
                 ];
             @endphp
@@ -470,7 +470,7 @@
                                         'Dokumen Surat Keputusan (SK)' => ['Kenaikan Pangkat', 'Kenaikan Gaji Berkala', 'Mutasi', 'CPNS', 'PNS', 'Penyesuaian Jabatan Fungsional', 'Penyesuaian Ijazah (KPU RI)', 'Pengangkatan Jabatan', 'Penugasan Jabatan'],
                                         'Dokumen Izin / Pemberhentian' => ['Surat izin belajar', 'Keputusan sanksi hukuman disiplin'],
                                         'Dokumen Evaluasi Kinerja' => ['SKP Triwulan', 'SKP Tahunan'],
-                                        'Laporan Kinerja' => ['Laporan Kinerja'],
+                                        'Dokumen Laporan Kinerja' => ['Laporan Kinerja'],
                                         'Dokumen SPT Tahunan' => ['Laporan SPT Tahunan']
                                     ];
                                     $items = $documentMap[request('category')] ?? [];
