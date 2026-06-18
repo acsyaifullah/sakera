@@ -140,6 +140,7 @@ class DocumentController extends Controller
         $file = $request->file('file');
         $cleanUserName = Str::slug($userName, '_');
         $cleanTitle = Str::slug($request->title, '_');
+        // $qSuffix = $inputQuarter ? ($request->category == 'Laporan Kinerja' ? "_" . Str::slug($inputQuarter, '_') : "_t" . $inputQuarter) : "";
         $qSuffix = $inputQuarter ? ($request->category == 'Laporan Kinerja' ? "_" . $inputQuarter : "_t" . $inputQuarter) : "";
         $ySuffix = $inputYear ? "_" . $inputYear : "";
         
