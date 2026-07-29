@@ -124,7 +124,11 @@ class DocumentController extends Controller
         // TIMPA DOKUMEN LAMA
         $multipleTitles = [
             'Sertifikat Pelatihan / Seminar / Sosialisasi', 
-            'Sertifikat Piagam Penghargaan'
+            'Sertifikat Piagam Penghargaan',
+            'SKP Triwulan', 
+            'SKP Tahunan', 
+            'Laporan SPT Tahunan', 
+            'Laporan Kinerja'
         ];
 
         $isMultiple = in_array($request->title, $multipleTitles);
