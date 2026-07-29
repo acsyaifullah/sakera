@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use ZipArchive;
+use App\Exports\CertificateExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class DocumentController extends Controller
 {
@@ -285,5 +287,20 @@ class DocumentController extends Controller
         } catch (\Exception $e) {
             return back()->with('error', 'Gagal menghapus: ' . $e->getMessage());
         }
+    }
+
+    public function exportCertificates(Request $request)
+    {
+        $request->validate([
+            'start_year' => 'required|numeric',
+            'end_year'   => 'required|numeric|gte:start_year',
+        ]);
+
+        $startYear = $request->start_year;
+        $endYear   = $request->end_year;
+
+        $fileName = "Rekap_Sertifikat_Pelatihan_{$startYear}_sd_{$endYear}.xlsx";
+
+        return Excel::download(new CertificateExport($startYear, $endYear), $fileName);
     }
 }

@@ -56,4 +56,9 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/users/{id}', [UserController::class, 'update'])->name('users.update');
         Route::delete('/users/{id}', [UserController::class, 'destroy'])->name('users.destroy');
     });
+
+    // export sertifikat
+    Route::get('/documents/export-certificates', [DocumentController::class, 'exportCertificates'])
+    ->name('documents.export-certificates')
+    ->middleware('auth');
 });

@@ -163,6 +163,16 @@
             </div>
         </div>
 
+        <!-- export sertifikat -->
+         @if(Auth::user()->role == 'admin')
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold mb-0 text-dark">Data Sertifikat</h5>
+            <button type="button" class="btn btn-success btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#modalExportCertificates">
+                <i class="bi bi-file-earmark-excel me-1"></i> Export Excel Sertifikat
+            </button>
+        </div>
+        @endif
+
         {{-- Filter hanya muncul jika sedang membuka kategori (bukan dashboard utama) --}}
         @if(Auth::user()->role == 'admin' && request()->has('category'))
         <div class="card border-0 shadow-sm rounded-4 mb-4">
@@ -552,6 +562,40 @@
         @endif
     </main>
 
+    {{-- MODAL EXPORT EXCEL SERTIFIKAT --}}
+    <div class="modal fade" id="modalExportCertificates" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow rounded-4">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold">Export Rekap Sertifikat</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{ route('documents.export-certificates') }}" method="GET">
+                    <div class="modal-body p-4">
+                        <p class="text-muted small mb-3">Pilih rentang tahun perolehan sertifikat pelatihan/seminar/sosialisasi yang ingin di-download:</p>
+                        
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="form-label small fw-bold">Tahun Awal</label>
+                                <input type="number" name="start_year" class="form-control" placeholder="Contoh: 2020" min="2000" max="{{ date('Y') }}" value="{{ date('Y') - 5 }}" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-bold">Tahun Akhir</label>
+                                <input type="number" name="end_year" class="form-control" placeholder="Contoh: {{ date('Y') }}" min="2000" max="{{ date('Y') }}" value="{{ date('Y') }}" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 pt-0">
+                        <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-success rounded-pill px-4">
+                            <i class="bi bi-download me-1"></i> Download Excel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     {{-- MODAL VALIDASI UNTUK ADMIN --}}
     @if(Auth::user()->role == 'admin')
         @foreach($documents as $doc) {{-- Pastikan menggunakan loop yang sama dengan data tabel --}}
@@ -809,9 +853,6 @@
                     }
                     
                     res.data.forEach(doc => {
-                        // const p = doc.period;
-                        // const badgeColor = doc.status === 'valid' ? 'success' : (doc.status === 'invalid' ? 'danger' : 'warning');
-                        // Tampilan untuk Sertifikat (Judul + Tahun & JP)
                         let labelTampilan = doc.period ? doc.period : '-';
                         if (doc.doc_title) {
                             let jpInfo = doc.training_hours ? ` (${doc.training_hours} JP)` : '';
@@ -821,7 +862,6 @@
 
                         const badgeColor = doc.status === 'valid' ? 'success' : (doc.status === 'invalid' ? 'danger' : 'warning');
                         const badgeText = doc.status === 'invalid' ? 'DITOLAK' : doc.status.toUpperCase();
-
                         
                         let actions = `<div class="d-flex gap-1 justify-content-center">
                             <button class="btn btn-sm btn-primary" onclick="previewPdf('/storage/${doc.file_path}')"><i class="bi bi-eye"></i></button>
@@ -850,7 +890,7 @@
                 });
         }
 
-        // UPDATE: Fungsi quickValidate menggunakan SweetAlert2
+        // PERBAIKAN UTAMA DI FUNGSI quickValidate
         function quickValidate(id, status) {
             const isValid = (status === 'valid');
             
@@ -866,23 +906,19 @@
                 cancelButtonText: 'Batal',
                 showLoaderOnConfirm: true,
                 
-                // --- PERBAIKAN INPUT TERKUNCI ---
-                focusConfirm: false,
-                allowOutsideClick: false,
-                // Properti ini sangat penting untuk modal bertumpuk
-                returnFocus: false, 
+                // --- DUA KUNCI SOLUSI AGAR KURSOR BISA DIKLIK DI MODAL BOOTSTRAP ---
+                target: document.getElementById('modalListBerkas'), // Menjadikan SweetAlert2 di dalam konteks Modal Bootstrap
+                heightAuto: false,
+                // -------------------------------------------------------------------
+
                 didOpen: () => {
                     if (!isValid) {
                         const input = Swal.getInput();
-                        // Hapus event listener lama jika ada, lalu paksa fokus
-                        input.focus();
-                        // Tambahkan delay sedikit lebih lama untuk memenangkan perebutan fokus dari Bootstrap
-                        setTimeout(() => {
-                            input.focus();
-                        }, 600);
+                        if (input) {
+                            setTimeout(() => { input.focus(); }, 100);
+                        }
                     }
                 },
-                // ---------------------------------
 
                 preConfirm: (note) => {
                     if (!isValid && !note) {
@@ -890,7 +926,6 @@
                         return false;
                     }
                     
-                    // Gunakan FormData untuk memastikan pengiriman data lebih stabil ke Laravel
                     return fetch(`/document/validate/${id}`, {
                         method: 'POST',
                         headers: { 
@@ -900,14 +935,12 @@
                         },
                         body: JSON.stringify({ 
                             status: status, 
-                            // Pastikan dikirim sebagai string kosong jika null agar tidak error validasi 'string'
                             admin_note: note || "" 
                         })
                     })
                     .then(response => {
                         if (!response.ok) {
                             return response.json().then(err => { 
-                                // Jika ada pesan error dari Laravel, tampilkan di SweetAlert
                                 throw new Error(err.message || 'Gagal memproses validasi'); 
                             });
                         }
@@ -932,7 +965,6 @@
             });
         }
 
-        // UPDATE: Fungsi deleteDoc menggunakan SweetAlert2 agar lebih seragam
         function deleteDoc(id) {
             Swal.fire({
                 title: 'Hapus Berkas?',
@@ -955,29 +987,23 @@
         }
 
         function editKgb(data) {
-            // 1. Set Action URL
             document.getElementById('formEditKgb').action = `/kgb-kp/${data.id}`;
             
-            // 2. Isi data dasar
             if(document.getElementById('edit_pangkat')) document.getElementById('edit_pangkat').value = data.pangkat;
             if(document.getElementById('edit_golongan')) document.getElementById('edit_golongan').value = data.golongan;
             
-            // 3. Isi data TMT CPNS & Status (Ini yang tadi bikin error karena belum ada di HTML)
             if(document.getElementById('edit_tmt_cpns')) document.getElementById('edit_tmt_cpns').value = data.tmt_cpns;
             if(document.getElementById('edit_status_kgb')) document.getElementById('edit_status_kgb').value = data.status_kgb;
             if(document.getElementById('edit_status_kp')) document.getElementById('edit_status_kp').value = data.status_kp;
 
-            // 4. Isi data KGB
             if(document.getElementById('edit_tmt_kgb_terakhir')) document.getElementById('edit_tmt_kgb_terakhir').value = data.tmt_kgb_terakhir;
             if(document.getElementById('edit_tmt_kgb_selanjutnya')) document.getElementById('edit_tmt_kgb_selanjutnya').value = data.tmt_kgb_selanjutnya;
             if(document.getElementById('edit_deadline_kgb')) document.getElementById('edit_deadline_kgb').value = data.deadline_kgb;
 
-            // 5. Isi data KP
             if(document.getElementById('edit_tmt_kp_terakhir')) document.getElementById('edit_tmt_kp_terakhir').value = data.tmt_kp_terakhir;
             if(document.getElementById('edit_tmt_kp_selanjutnya')) document.getElementById('edit_tmt_kp_selanjutnya').value = data.tmt_kp_selanjutnya;
             if(document.getElementById('edit_deadline_kp')) document.getElementById('edit_deadline_kp').value = data.deadline_kp;
 
-            // 6. Munculkan Modal
             new bootstrap.Modal(document.getElementById('modalEditKgb')).show();
         }
 
