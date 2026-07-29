@@ -89,6 +89,8 @@ class DocumentController extends Controller
             'file' => 'required|mimes:pdf|max:2048',
             'title' => 'required',
             'category' => 'required',
+            'doc_title'      => 'nullable|string|max:255',
+            'training_hours' => 'nullable|numeric',
             'year' => 'nullable|numeric|digits:4',
             'quarter' => 'nullable'
         ]);
@@ -120,19 +122,26 @@ class DocumentController extends Controller
         }
 
         // TIMPA DOKUMEN LAMA
-        $existingDoc = Document::where('user_id', $userId)
-            ->where('category', $request->category)
-            ->where('title', $request->title)
-            ->where('period', $periodLabel)
-            ->first();
+        $multipleTitles = [
+            'Sertifikat Pelatihan / Seminar / Sosialisasi', 
+            'Sertifikat Piagam Penghargaan'
+        ];
 
-        if ($existingDoc) {
-            // Hapus file fisik dari storage
-            if (Storage::disk('public')->exists($existingDoc->file_path)) {
-                Storage::disk('public')->delete($existingDoc->file_path);
+        $isMultiple = in_array($request->title, $multipleTitles);
+
+        // Jika BUKAN multiple, lakukan timpa (overwrite) dokumen lama
+        if (!$isMultiple) {
+            $existingDoc = Document::where('user_id', $userId)
+                ->where('category', $request->category)
+                ->where('title', $request->title)
+                ->first();
+
+            if ($existingDoc) {
+                if (Storage::disk('public')->exists($existingDoc->file_path)) {
+                    Storage::disk('public')->delete($existingDoc->file_path);
+                }
+                $existingDoc->delete();
             }
-            // Hapus record lama di database
-            $existingDoc->delete();
         }
         // END TIMPA DOKUMEN LAMA
 
@@ -156,6 +165,8 @@ class DocumentController extends Controller
             'user_id'    => $userId,
             'category'   => $request->category,
             'title'      => $request->title,
+            'doc_title'      => $request->doc_title,
+            'training_hours' => $request->training_hours,
             'file_path'  => $filePath,
             'status'     => 'pending',
             'period'     => $periodLabel,

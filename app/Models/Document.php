@@ -17,6 +17,8 @@ class Document extends Model
         'user_id', 
         'category', 
         'title', 
+        'doc_title',
+        'training_hours',
         'file_path', 
         'status', 
         'admin_note',

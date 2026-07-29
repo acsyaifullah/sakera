@@ -500,7 +500,17 @@
                                             <button class="btn btn-sm btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalUpload{{$index}}"><i class="bi bi-cloud-arrow-up"></i></button>
                                             
                                             @if($doc)
-                                                @php $isMultiple = in_array($label, ['SKP Triwulan', 'SKP Tahunan', 'Laporan SPT Tahunan', 'Laporan Kinerja']); @endphp
+                                                @php 
+                                                    $multipleTitles = [
+                                                        'Sertifikat Pelatihan / Seminar / Sosialisasi', 
+                                                        'Sertifikat Piagam Penghargaan',
+                                                        'SKP Triwulan', 
+                                                        'SKP Tahunan', 
+                                                        'Laporan SPT Tahunan', 
+                                                        'Laporan Kinerja'
+                                                    ];
+                                                    $isMultiple = in_array($label, $multipleTitles); 
+                                                @endphp
                                                 @if($isMultiple)
                                                     <button class="btn btn-sm btn-info text-white shadow-sm" onclick="openModalList('{{ request('category') }}', '{{ $label }}', '{{ request('user_id') }}')">
                                                         <i class="bi bi-stack"></i>
@@ -636,6 +646,36 @@
                             </div>
                             @endif
 
+                            @if(in_array($label, ['Sertifikat Piagam Penghargaan']))
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold">Judul Sertifikat</label>
+                                    <input type="text" name="doc_title" class="form-control" placeholder="Contoh: Piagam Penghargaan Satker Terbaik" required>
+                                </div>
+
+                                <div class="mb-3">                                    
+                                    <label class="form-label small fw-bold">Tahun</label>
+                                    <input type="number" name="year" class="form-control" placeholder="Contoh: 2026" min="1900" max="{{ date('Y') }}" required>
+                                </div>
+                            @endif
+
+                            @if(in_array($label, ['Sertifikat Pelatihan / Seminar / Sosialisasi']))
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold">Judul Sertifikat</label>
+                                    <input type="text" name="doc_title" class="form-control" placeholder="Contoh: Pelatihan Tata Naskah Dinas" required>
+                                </div>
+
+                                <div class="row g-2 mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold">Tahun</label>
+                                        <input type="number" name="year" class="form-control" placeholder="Contoh: 2026" min="1900" max="{{ date('Y') }}" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold">JP / Jam Pelatihan</label>
+                                        <input type="number" name="training_hours" class="form-control" placeholder="Masukkan angka saja" min="1" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                                    </div>
+                                </div>
+                            @endif
+
                             <div class="mb-0">
                                 <label class="small fw-bold mb-2">Pilih File PDF (Maks 2MB)</label>
                                 <input type="file" name="file" class="form-control" accept=".pdf" required>
@@ -763,11 +803,25 @@
             fetch(`{{ route('documents.by-category') }}?category=${encodeURIComponent(category)}&title=${encodeURIComponent(title)}&user_id=${userId}`)
                 .then(r => r.json()).then(res => {
                     container.innerHTML = '';
-                    if(res.data.length === 0) { container.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-muted">Tidak ada arsip.</td></tr>'; return; }
+                    if(res.data.length === 0) { 
+                        container.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-muted">Tidak ada arsip.</td></tr>'; 
+                        return; 
+                    }
                     
                     res.data.forEach(doc => {
-                        const p = doc.period;
+                        // const p = doc.period;
+                        // const badgeColor = doc.status === 'valid' ? 'success' : (doc.status === 'invalid' ? 'danger' : 'warning');
+                        // Tampilan untuk Sertifikat (Judul + Tahun & JP)
+                        let labelTampilan = doc.period ? doc.period : '-';
+                        if (doc.doc_title) {
+                            let jpInfo = doc.training_hours ? ` (${doc.training_hours} JP)` : '';
+                            let yearInfo = doc.period ? ` - Tahun ${doc.period}` : '';
+                            labelTampilan = `<strong>${doc.doc_title}</strong><br><small class="text-muted">${yearInfo}${jpInfo}</small>`;
+                        }
+
                         const badgeColor = doc.status === 'valid' ? 'success' : (doc.status === 'invalid' ? 'danger' : 'warning');
+                        const badgeText = doc.status === 'invalid' ? 'DITOLAK' : doc.status.toUpperCase();
+
                         
                         let actions = `<div class="d-flex gap-1 justify-content-center">
                             <button class="btn btn-sm btn-primary" onclick="previewPdf('/storage/${doc.file_path}')"><i class="bi bi-eye"></i></button>
@@ -782,14 +836,16 @@
 
                         container.innerHTML += `
                             <tr>
-                                <td class="ps-3 py-3 fw-bold">${p}</td>
+                                <td class="ps-3 py-3">${labelTampilan}</td>
                                 <td class="text-center py-3">
                                     <span class="status-badge border border-${badgeColor} text-${badgeColor} bg-${badgeColor} bg-opacity-10">
-                                        ${doc.status.toUpperCase()}
+                                        ${badgeText}
                                     </span>
+                                    ${doc.status === 'invalid' && doc.admin_note ? `<br><small class="text-danger" style="font-size:10px;">${doc.admin_note}</small>` : ''}
                                 </td>
                                 <td class="text-center py-3">${actions}</td>
                             </tr>`;
+
                     });
                 });
         }
