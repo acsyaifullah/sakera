@@ -35,6 +35,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/download/{id}', [DocumentController::class, 'download'])->name('download');
     Route::get('/download-batch', [DocumentController::class, 'downloadBatch'])->name('download.batch');
     Route::delete('/document/{id}', [DocumentController::class, 'destroy'])->name('document.destroy');
+    Route::put('/document/{id}', [DocumentController::class, 'update'])->name('document.update');
 
     // API untuk mengambil daftar berkas berdasarkan kategori dan judul (AJAX)
     Route::get('/documents/list-by-category', [DocumentController::class, 'getDocumentsByCategory'])->name('documents.by-category');

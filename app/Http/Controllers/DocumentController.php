@@ -151,15 +151,19 @@ class DocumentController extends Controller
         }
         // END TIMPA DOKUMEN LAMA
 
-        // LOGIKA PENAMAAN FILE
+        // LOGIKA PENAMAAN FILE (PERBAIKAN BUG PENUMPUKAN SERTIFIKAT)
         $file = $request->file('file');
         $cleanUserName = Str::slug($userName, '_');
         $cleanTitle = Str::slug($request->title, '_');
-        // $qSuffix = $inputQuarter ? ($request->category == 'Laporan Kinerja' ? "_" . Str::slug($inputQuarter, '_') : "_t" . $inputQuarter) : "";
         $qSuffix = $inputQuarter ? ($request->category == 'Laporan Kinerja' ? "_" . $inputQuarter : "_t" . $inputQuarter) : "";
         $ySuffix = $inputYear ? "_" . $inputYear : "";
+
+        // Tambahkan Slug Judul Sertifikat dan JP jika ada
+        $docTitleSuffix = $request->doc_title ? "_" . Str::slug($request->doc_title, '_') : "";
+        $jpSuffix = $request->training_hours ? "_" . $request->training_hours . "jp" : "";
         
-        $fileName = "{$cleanUserName}_{$cleanTitle}{$ySuffix}{$qSuffix}.pdf";
+        // Gabungkan penamaan unik
+        $fileName = "{$cleanUserName}_{$cleanTitle}{$ySuffix}{$docTitleSuffix}{$jpSuffix}{$qSuffix}.pdf";
         
         $folderCategory = Str::slug($request->category, '_'); 
         $destinationPath = "archives/{$userId}/{$folderCategory}";
@@ -180,6 +184,67 @@ class DocumentController extends Controller
         ]);
 
         return back()->with('success', 'Berhasil mengarsipkan ' . $request->title . ($periodLabel ? " Periode $periodLabel" : ""));
+    }
+
+    // FITUR EDIT / UPDATE SERTIFIKAT & BERKAS MULTIPLE
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'file'           => 'nullable|mimes:pdf|max:2048',
+            'doc_title'      => 'nullable|string|max:255',
+            'training_hours' => 'nullable|numeric',
+            'year'           => 'nullable|numeric|digits:4',
+        ]);
+
+        $doc = Document::findOrFail($id);
+        $user = Auth::user();
+
+        if ($user->role != 'admin' && $doc->user_id != $user->id) {
+            return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
+        }
+
+        $targetUser = User::find($doc->user_id);
+        $userName = $targetUser ? $targetUser->name : $user->name;
+
+        // Ambil data baru atau gunakan yang lama
+        $inputYear = $request->filled('year') ? $request->year : $doc->period;
+        $docTitle  = $request->has('doc_title') ? $request->doc_title : $doc->doc_title;
+        $tHours    = $request->has('training_hours') ? $request->training_hours : $doc->training_hours;
+
+        $doc->doc_title      = $docTitle;
+        $doc->training_hours = $tHours;
+        $doc->period         = $inputYear;
+
+        // Jika user mengunggah PDF baru
+        if ($request->hasFile('file')) {
+            // Hapus file lama
+            if (Storage::disk('public')->exists($doc->file_path)) {
+                Storage::disk('public')->delete($doc->file_path);
+            }
+
+            $file = $request->file('file');
+            $cleanUserName  = Str::slug($userName, '_');
+            $cleanTitle     = Str::slug($doc->title, '_');
+            $ySuffix        = $inputYear ? "_" . $inputYear : "";
+            $docTitleSuffix = $docTitle ? "_" . Str::slug($docTitle, '_') : "";
+            $jpSuffix       = $tHours ? "_" . $tHours . "jp" : "";
+
+            $fileName = "{$cleanUserName}_{$cleanTitle}{$ySuffix}{$docTitleSuffix}{$jpSuffix}.pdf";
+            $folderCategory = Str::slug($doc->category, '_'); 
+            $destinationPath = "archives/{$doc->user_id}/{$folderCategory}";
+
+            $doc->file_path = $file->storeAs($destinationPath, $fileName, 'public');
+        }
+
+        // RESET STATUS KE PENDING (Agar direview ulang admin)
+        $doc->status     = 'pending';
+        $doc->admin_note = null;
+        $doc->save();
+
+        return response()->json([
+            'success' => true, 
+            'message' => 'Sertifikat berhasil diperbarui dan status dikembalikan ke Pending.'
+        ]);
     }
 
     public function getDocumentsByCategory(Request $request)

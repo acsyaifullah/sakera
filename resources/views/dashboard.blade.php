@@ -741,10 +741,25 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-0">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light"><tr><th class="ps-3 py-3 small">Periode</th><th class="text-center py-3 small">Status</th><th class="text-center py-3 small">Aksi</th></tr></thead>
-                        <tbody id="listBerkasContainer"></tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-3 py-3 small">Periode / Judul</th>
+                                    <th class="text-center py-3 small">Status</th>
+                                    <th class="text-center py-3 small">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="listBerkasContainer"></tbody>
+                        </table>
+                    </div>
+                </div>
+                {{-- Tambahan Footer untuk Info & Tombol Pagination --}}
+                <div class="modal-footer d-flex justify-content-between align-items-center bg-light border-0 py-2 px-3">
+                    <small class="text-muted" id="paginationInfo">Menampilkan 0 dari 0 data</small>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0" id="paginationContainer"></ul>
+                    </nav>
                 </div>
             </div>
         </div>
@@ -815,6 +830,49 @@
         </div>
     </div>
 
+    {{-- MODAL EDIT SERTIFIKAT --}}
+    <div class="modal fade" id="modalEditDoc" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <form id="formEditDoc" onsubmit="submitEditDoc(event)" enctype="multipart/form-data" class="modal-content border-0 shadow">
+                @csrf
+                <input type="hidden" name="_method" value="PUT">
+                <input type="hidden" id="edit_doc_id">
+
+                <div class="modal-header border-0 bg-light">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-pencil-square me-2"></i>Edit Sertifikat</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 text-start">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Judul Sertifikat</label>
+                        <input type="text" name="doc_title" id="edit_doc_title" class="form-control" required>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Tahun</label>
+                            <input type="number" name="year" id="edit_year" class="form-control" min="1900" max="{{ date('Y') }}" required>
+                        </div>
+                        <div class="col-md-6" id="container_edit_jp">
+                            <label class="form-label small fw-bold">JP / Jam Pelatihan</label>
+                            <input type="number" name="training_hours" id="edit_training_hours" class="form-control" placeholder="Masukkan angka">
+                        </div>
+                    </div>
+
+                    <div class="mb-0">
+                        <label class="small fw-bold mb-2">Ganti File PDF (Opsional)</label>
+                        <input type="file" name="file" class="form-control" accept=".pdf">
+                        <div class="form-text text-muted small">Biarkan kosong jika tidak ingin mengganti file PDF.</div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-warning rounded-pill px-4 fw-bold">Simpan & Reset Validasi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -838,56 +896,179 @@
         function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); document.getElementById('overlay').classList.toggle('active'); }
         function previewPdf(url) { document.getElementById('pdfFrame').src = url; new bootstrap.Modal(document.getElementById('previewModal')).show(); }
 
+        // OPEN MODAL LIST BERKAS PAGINATION
+        let currentModalDocs = [];
+        let currentPage = 1;
+        const itemsPerPage = 10; // Default 10 file per halaman
+        let currentIsAdmin = false;
+
         function openModalList(category, title, userId) {
             const container = document.getElementById('listBerkasContainer');
             document.getElementById('modalListTitle').innerText = 'Daftar ' + title;
             container.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-muted">Memuat data...</td></tr>';
+            document.getElementById('paginationInfo').innerText = 'Memuat...';
+            document.getElementById('paginationContainer').innerHTML = '';
+            
             new bootstrap.Modal(document.getElementById('modalListBerkas')).show();
 
             fetch(`{{ route('documents.by-category') }}?category=${encodeURIComponent(category)}&title=${encodeURIComponent(title)}&user_id=${userId}`)
                 .then(r => r.json()).then(res => {
-                    container.innerHTML = '';
-                    if(res.data.length === 0) { 
-                        container.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-muted">Tidak ada arsip.</td></tr>'; 
-                        return; 
-                    }
+                    currentModalDocs = res.data || [];
+                    currentIsAdmin = res.is_admin || false;
+                    currentPage = 1; // Reset ke halaman 1
                     
-                    res.data.forEach(doc => {
-                        let labelTampilan = doc.period ? doc.period : '-';
-                        if (doc.doc_title) {
-                            let jpInfo = doc.training_hours ? ` (${doc.training_hours} JP)` : '';
-                            let yearInfo = doc.period ? ` - Tahun ${doc.period}` : '';
-                            labelTampilan = `<strong>${doc.doc_title}</strong><br><small class="text-muted">${yearInfo}${jpInfo}</small>`;
-                        }
-
-                        const badgeColor = doc.status === 'valid' ? 'success' : (doc.status === 'invalid' ? 'danger' : 'warning');
-                        const badgeText = doc.status === 'invalid' ? 'DITOLAK' : doc.status.toUpperCase();
-                        
-                        let actions = `<div class="d-flex gap-1 justify-content-center">
-                            <button class="btn btn-sm btn-primary" onclick="previewPdf('/storage/${doc.file_path}')"><i class="bi bi-eye"></i></button>
-                            <button class="btn btn-sm btn-danger" onclick="deleteDoc(${doc.id})"><i class="bi bi-trash"></i></button>`;
-
-                        if(res.is_admin) {
-                            actions += `
-                                <button type="button" class="btn btn-sm btn-success rounded-pill px-2" onclick="quickValidate(${doc.id}, 'valid')" title="Validasi"><i class="bi bi-check-lg"></i></button>
-                                <button type="button" class="btn btn-sm btn-dark rounded-pill px-2" onclick="quickValidate(${doc.id}, 'invalid')" title="Tolak"><i class="bi bi-x-lg"></i></button>`;
-                        }
-                        actions += `</div>`;
-
-                        container.innerHTML += `
-                            <tr>
-                                <td class="ps-3 py-3">${labelTampilan}</td>
-                                <td class="text-center py-3">
-                                    <span class="status-badge border border-${badgeColor} text-${badgeColor} bg-${badgeColor} bg-opacity-10">
-                                        ${badgeText}
-                                    </span>
-                                    ${doc.status === 'invalid' && doc.admin_note ? `<br><small class="text-danger" style="font-size:10px;">${doc.admin_note}</small>` : ''}
-                                </td>
-                                <td class="text-center py-3">${actions}</td>
-                            </tr>`;
-
-                    });
+                    renderModalTable();
                 });
+        }
+
+        // FUNGSI RENDER TABEL BERDASARKAN HALAMAN AKTIF
+        function renderModalTable() {
+            const container = document.getElementById('listBerkasContainer');
+            container.innerHTML = '';
+
+            if (currentModalDocs.length === 0) {
+                container.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-muted">Tidak ada arsip.</td></tr>';
+                document.getElementById('paginationInfo').innerText = 'Menampilkan 0 dari 0 data';
+                document.getElementById('paginationContainer').innerHTML = '';
+                return;
+            }
+
+            // Hitung Slice Data untuk Halaman Aktif
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedItems = currentModalDocs.slice(startIndex, endIndex);
+
+            paginatedItems.forEach(doc => {
+                let labelTampilan = doc.period ? doc.period : '-';
+                if (doc.doc_title) {
+                    let jpInfo = doc.training_hours ? ` (${doc.training_hours} JP)` : '';
+                    let yearInfo = doc.period ? ` - Tahun ${doc.period}` : '';
+                    labelTampilan = `<strong>${doc.doc_title}</strong><br><small class="text-muted">${yearInfo}${jpInfo}</small>`;
+                }
+
+                const badgeColor = doc.status === 'valid' ? 'success' : (doc.status === 'invalid' ? 'danger' : 'warning');
+                const badgeText = doc.status === 'invalid' ? 'DITOLAK' : doc.status.toUpperCase();
+                
+                let actions = `<div class="d-flex gap-1 justify-content-center">
+                    <button class="btn btn-sm btn-primary" onclick="previewPdf('/storage/${doc.file_path}')" title="Lihat"><i class="bi bi-eye"></i></button>
+                    <a href="/document/download/${doc.id}" class="btn btn-sm btn-success" title="Download"><i class="bi bi-download"></i></a>
+                    <button class="btn btn-sm btn-warning text-white" onclick='openModalEditDoc(${JSON.stringify(doc)})' title="Edit Sertifikat"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteDoc(${doc.id})" title="Hapus"><i class="bi bi-trash"></i></button>`;
+
+                if(currentIsAdmin) {
+                    actions += `
+                        <button type="button" class="btn btn-sm btn-success rounded-pill px-2" onclick="quickValidate(${doc.id}, 'valid')" title="Validasi"><i class="bi bi-check-lg"></i></button>
+                        <button type="button" class="btn btn-sm btn-dark rounded-pill px-2" onclick="quickValidate(${doc.id}, 'invalid')" title="Tolak"><i class="bi bi-x-lg"></i></button>`;
+                }
+                actions += `</div>`;
+
+                container.innerHTML += `
+                    <tr>
+                        <td class="ps-3 py-3">${labelTampilan}</td>
+                        <td class="text-center py-3">
+                            <span class="status-badge border border-${badgeColor} text-${badgeColor} bg-${badgeColor} bg-opacity-10">
+                                ${badgeText}
+                            </span>
+                            ${doc.status === 'invalid' && doc.admin_note ? `<br><small class="text-danger" style="font-size:10px;">${doc.admin_note}</small>` : ''}
+                        </td>
+                        <td class="text-center py-3">${actions}</td>
+                    </tr>`;
+            });
+
+            // Update Info Teks
+            const showingStart = startIndex + 1;
+            const showingEnd = Math.min(endIndex, currentModalDocs.length);
+            document.getElementById('paginationInfo').innerText = `Menampilkan ${showingStart}-${showingEnd} dari ${currentModalDocs.length} data`;
+
+            // Render Tombol Halaman
+            renderPaginationControls();
+        }
+
+        // FUNGSI RENDER TOMBOL PAGINATION
+        function renderPaginationControls() {
+            const totalPages = Math.ceil(currentModalDocs.length / itemsPerPage);
+            const paginationContainer = document.getElementById('paginationContainer');
+            paginationContainer.innerHTML = '';
+
+            if (totalPages <= 1) return; // Jika data <= 10, tidak perlu tampilkan tombol pagination
+
+            // Tombol Prev
+            const prevDisabled = currentPage === 1 ? 'disabled' : '';
+            paginationContainer.innerHTML += `
+                <li class="page-item ${prevDisabled}">
+                    <a class="page-link" href="#" onclick="changeModalPage(${currentPage - 1}); return false;">&laquo;</a>
+                </li>`;
+
+            // Angka Halaman
+            for (let i = 1; i <= totalPages; i++) {
+                const activeClass = i === currentPage ? 'active' : '';
+                paginationContainer.innerHTML += `
+                    <li class="page-item ${activeClass}">
+                        <a class="page-link" href="#" onclick="changeModalPage(${i}); return false;">${i}</a>
+                    </li>`;
+            }
+
+            // Tombol Next
+            const nextDisabled = currentPage === totalPages ? 'disabled' : '';
+            paginationContainer.innerHTML += `
+                <li class="page-item ${nextDisabled}">
+                    <a class="page-link" href="#" onclick="changeModalPage(${currentPage + 1}); return false;">&raquo;</a>
+                </li>`;
+        }
+
+        // FUNGSI PINDAH HALAMAN
+        function changeModalPage(newPage) {
+            const totalPages = Math.ceil(currentModalDocs.length / itemsPerPage);
+            if (newPage < 1 || newPage > totalPages) return;
+            
+            currentPage = newPage;
+            renderModalTable();
+        }
+        // END OPEN MODAL LIST BERKAS PAGINATION
+
+        function openModalEditDoc(doc) {
+            document.getElementById('edit_doc_id').value = doc.id;
+            document.getElementById('edit_doc_title').value = doc.doc_title || '';
+            document.getElementById('edit_year').value = doc.period || '';
+            
+            const thInput = document.getElementById('edit_training_hours');
+            if(thInput) {
+                thInput.value = doc.training_hours || '';
+                // Sembunyikan input JP jika bukan sertifikat pelatihan
+                if(doc.title === 'Sertifikat Piagam Penghargaan') {
+                    document.getElementById('container_edit_jp').style.display = 'none';
+                } else {
+                    document.getElementById('container_edit_jp').style.display = 'block';
+                }
+            }
+
+            new bootstrap.Modal(document.getElementById('modalEditDoc')).show();
+        }
+
+        // SUBMIT EDIT SERTIFIKAT VIA AJAX
+        function submitEditDoc(event) {
+            event.preventDefault();
+            const id = document.getElementById('edit_doc_id').value;
+            const formData = new FormData(document.getElementById('formEditDoc'));
+
+            fetch(`/document/${id}`, {
+                method: 'POST', // Laravel SPOOFING Method PUT via _method
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: formData
+            })
+            .then(r => r.json())
+            .then(res => {
+                if(res.success) {
+                    Swal.fire({ icon: 'success', title: 'Berhasil!', text: res.message, timer: 1500, showConfirmButton: false })
+                    .then(() => location.reload());
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Gagal', text: res.message });
+                }
+            })
+            .catch(err => Swal.fire({ icon: 'error', title: 'Error', text: err.message }));
         }
 
         // PERBAIKAN UTAMA DI FUNGSI quickValidate
